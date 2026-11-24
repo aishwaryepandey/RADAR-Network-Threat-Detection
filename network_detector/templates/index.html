@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Attack Detector</title>
+    <meta name="description" content="Live Network Security Dashboard displaying ARP, DHCP, DNS spoofing and ML Anomalies.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Left Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <nav class="nav-menu">
+                <a href="#section-top" class="nav-item active" data-section="section-top" title="Dashboard Overview">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <span class="nav-tooltip">Dashboard</span>
+                </a>
+                <a href="#section-incidents" class="nav-item" data-section="section-incidents" title="Incident Log">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span class="nav-tooltip">Threats</span>
+                </a>
+                <a href="#section-chart" class="nav-item" data-section="section-chart" title="Threat Timeline">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <span class="nav-tooltip">Timeline</span>
+                </a>
+                <a href="#section-stats" class="nav-item" data-section="section-stats" title="Traffic Stats">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <span class="nav-tooltip">Stats & Logs</span>
+                </a>
+                <a href="#" class="nav-item" id="settings-trigger" title="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span class="nav-tooltip">Settings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <div class="main-content">
+            <!-- Top Nav Header -->
+            <header class="top-nav">
+                <div class="header-title">
+                    <h1>RADAR</h1>
+                    <p class="subtitle">Real-time ARP DNS Attack Recognizer</p>
+                    <div class="sub-nav">
+                        <span class="active">Dashboard</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-stat">
+                        <span class="lbl">Interface</span>
+                        <span class="val" id="sensor-iface">--</span>
+                    </div>
+                    <div class="header-stat">
+                        <span class="lbl">Packets</span>
+                        <span class="val" id="sensor-pkts">0</span>
+                    </div>
+                    <div class="header-stat">
+                        <span class="lbl">Blocked</span>
+                        <span class="val danger" id="val-blocked">0</span>
+                    </div>
+                    <div class="header-stat">
+                        <span class="lbl">Devices</span>
+                        <span class="val success" id="val-devices">0</span>
+                    </div>
+                    <div class="header-stat env-stat">
+                        <span class="lbl">Environment</span>
+                        <span class="val env-val" id="sensor-env">Detecting...</span>
+                    </div>
+                    <div class="status-badge" id="system-status">Scanning Active</div>
+                </div>
+            </header>
+
+            <!-- Settings Modal -->
+            <div class="settings-overlay" id="settings-overlay">
+                <div class="settings-modal">
+                    <div class="settings-header">
+                        <h3>⚙️ System Settings</h3>
+                        <button class="settings-close" id="settings-close">✕</button>
+                    </div>
+                    <div class="settings-body">
+                        <div class="settings-group">
+                            <label class="settings-label">Active Probing</label>
+                            <p class="settings-desc">Send ARP verification probes when a conflict is detected. Only enable in authorized/lab environments.</p>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="toggle-probing">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-status" id="probing-status">OFF</span>
+                        </div>
+                        <div class="settings-divider"></div>
+                        <div class="settings-group">
+                            <label class="settings-label">Auto-Block Attackers</label>
+                            <p class="settings-desc">Automatically add Windows Firewall rules to block detected attacker IPs.</p>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="toggle-autoblock" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-status" id="autoblock-status">ON</span>
+                        </div>
+                        <div class="settings-divider"></div>
+                        <div class="settings-group">
+                            <label class="settings-label">Debug Mode</label>
+                            <p class="settings-desc">Log extra diagnostic info to the console and alert feed.</p>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="toggle-debug">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-status" id="debug-status">OFF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Command Center Controls -->
+            <div class="sim-center-panel" id="section-top">
+                <span class="sim-label">Simulation Command Center</span>
+                <div class="sim-buttons">
+                    <button onclick="simulateAttack('arp')" class="sim-btn">Simulate ARP</button>
+                    <button onclick="simulateAttack('garp')" class="sim-btn danger-btn">Simulate GARP</button>
+                    <button onclick="simulateAttack('dns')" class="sim-btn">Simulate DNS</button>
+                    <button onclick="simulateAttack('dhcp')" class="sim-btn">Simulate DHCP</button>
+                </div>
+            </div>
+
+            <!-- Upper Row: Threat Timeline & Recent Incidents Log -->
+            <div id="section-chart" class="scroll-anchor"></div>
+            <div class="upper-grid">
+                <div class="chart-card">
+                    <div class="card-header-row">
+                        <h2>Threat Timeline</h2>
+                        <span class="time-filter">Last 24 hours</span>
+                    </div>
+                    <div id="chart-container"></div>
+                </div>
+                
+                <div class="incident-card" id="section-incidents">
+                    <div class="card-header-row">
+                        <h2>Recent Incidents Log</h2>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="incident-table" id="incident-table">
+                            <thead>
+                                <tr>
+                                    <th>TIME</th>
+                                    <th>SEVERITY</th>
+                                    <th>TYPE</th>
+                                    <th>PACKETS</th>
+                                    <th>ATTACKER IP</th>
+                                    <th>ATTACKER MAC</th>
+                                    <th>VICTIM IP</th>
+                                    <th>VICTIM MAC</th>
+                                    <th>STARTED</th>
+                                    <th>LAST SEEN</th>
+                                    <th>DURATION</th>
+                                    <th>DETAILS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incident-body">
+                                <tr><td colspan="12" style="text-align:center;color:var(--text-dark);padding:3rem;">No incidents recorded yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lower Row: Stat Cards -->
+            <div class="stats-row">
+                <!-- Card 1: Active Threats -->
+                <div class="stat-card accent-red">
+                    <div class="stat-inner">
+                        <div class="stat-card-header">
+                            <span class="title">Active Threats (ARP)</span>
+                            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        </div>
+                        <div class="value" id="val-arp">0</div>
+                        <div class="trend down">▼ 25%</div>
+                    </div>
+                </div>
+
+                <!-- Card 2: DHCP Spoofs -->
+                <div class="stat-card accent-cyan">
+                    <div class="stat-inner">
+                        <div class="stat-card-header">
+                            <span class="title">DHCP Detections</span>
+                            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l-7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        </div>
+                        <div class="value" id="val-dhcp">0</div>
+                        <div class="trend up">▲ 28%</div>
+                    </div>
+                </div>
+
+                <!-- Card 3: DNS Spoofs -->
+                <div class="stat-card accent-purple">
+                    <div class="stat-inner">
+                        <div class="stat-card-header">
+                            <span class="title">DNS spoofing</span>
+                            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        </div>
+                        <div class="value" id="val-dns">0</div>
+                        <div class="trend down">▼ 45%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Statistics & DNS log -->
+            <div id="section-stats" class="scroll-anchor"></div>
+            <div class="bottom-grid">
+                <div class="panel">
+                    <h2>Traffic Statistics Summary</h2>
+                    <div class="traffic-mini-grid">
+                        <div class="traffic-item">
+                            <span>DNS Packets</span>
+                            <strong id="val-pkts-dns">0</strong>
+                        </div>
+                        <div class="traffic-item">
+                            <span>ARP Packets</span>
+                            <strong id="val-pkts-arp">0</strong>
+                        </div>
+                        <div class="traffic-item">
+                            <span>ICMP Packets</span>
+                            <strong id="val-pkts-icmp">0</strong>
+                        </div>
+                        <div class="traffic-item">
+                            <span>UDP Packets</span>
+                            <strong id="val-pkts-udp">0</strong>
+                        </div>
+                        <div class="traffic-divider"></div>
+                        <div class="traffic-item detection-row">
+                            <span>DHCP Spoofs Detected</span>
+                            <strong id="val-stat-dhcp" class="det-val cyan">0</strong>
+                        </div>
+                        <div class="traffic-item detection-row">
+                            <span>ARP Attacks Detected</span>
+                            <strong id="val-stat-arp" class="det-val danger">0</strong>
+                        </div>
+                        <div class="traffic-item detection-row">
+                            <span>DNS Spoofs Detected</span>
+                            <strong id="val-stat-dns" class="det-val purple">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Observed DNS Resolutions</h2>
+                    <ul class="alert-list" id="dns-list"></ul>
+                </div>
+
+                <div class="panel">
+                    <h2>ML Engine Baseline Status</h2>
+                    <div class="ml-status-box" id="sensor-ml">Starting...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Sidebar Navigation ──────────────────────────────────────────
+        document.querySelectorAll('.nav-item[data-section]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('data-section');
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Highlight active nav item on scroll
+        const sections = [
+            { id: 'section-top',       navSection: 'section-top' },
+            { id: 'section-chart',     navSection: 'section-chart' },
+            { id: 'section-incidents', navSection: 'section-incidents' },
+            { id: 'section-stats',     navSection: 'section-stats' }
+        ];
+
+        const mainContent = document.querySelector('.main-content');
+        mainContent.addEventListener('scroll', () => {
+            let current = 'section-top';
+            sections.forEach(s => {
+                const el = document.getElementById(s.id);
+                if (el && el.getBoundingClientRect().top <= 120) {
+                    current = s.navSection;
+                }
+            });
+            document.querySelectorAll('.nav-item[data-section]').forEach(n => {
+                n.classList.toggle('active', n.getAttribute('data-section') === current);
+            });
+        });
+
+        // ── Settings Modal ──────────────────────────────────────────────
+        const settingsTrigger = document.getElementById('settings-trigger');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const settingsClose   = document.getElementById('settings-close');
+
+        settingsTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            settingsOverlay.classList.toggle('open');
+            this.classList.toggle('active');
+        });
+        settingsClose.addEventListener('click', () => {
+            settingsOverlay.classList.remove('open');
+            settingsTrigger.classList.remove('active');
+        });
+        settingsOverlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('open');
+                settingsTrigger.classList.remove('active');
+            }
+        });
+
+        // Toggle helpers
+        function bindToggle(checkboxId, statusId, onLabel, offLabel) {
+            const cb = document.getElementById(checkboxId);
+            const st = document.getElementById(statusId);
+            cb.addEventListener('change', () => {
+                st.textContent = cb.checked ? onLabel : offLabel;
+                st.style.color = cb.checked ? '#38f9d7' : '#9ca3af';
+            });
+            // set initial colour
+            st.style.color = cb.checked ? '#38f9d7' : '#9ca3af';
+        }
+        bindToggle('toggle-probing',   'probing-status',   'ON', 'OFF');
+        bindToggle('toggle-autoblock', 'autoblock-status', 'ON', 'OFF');
+        bindToggle('toggle-debug',     'debug-status',     'ON', 'OFF');
+
+        const chartDiv = document.getElementById('chart-container');
+        
+        function simulateAttack(type) {
+            fetch(`/api/simulate/${type}`, { method: 'POST' })
+                .then(res => {
+                    updateDashboard();
+                })
+                .catch(err => console.error("Error simulating attack:", err));
+        }
+
+        // Curved spline layout lines matching the target mockup
+        let traceArp = { 
+            x: [], y: [], name: 'ARP', mode: 'lines', 
+            line: {color: '#ff4b4b', shape: 'spline', smoothing: 1.3, width: 3},
+            fill: 'tozeroy', fillcolor: 'rgba(255, 75, 75, 0.03)'
+        };
+        let traceDhcp = { 
+            x: [], y: [], name: 'DHCP', mode: 'lines', 
+            line: {color: '#00f2fe', shape: 'spline', smoothing: 1.3, width: 3},
+            fill: 'tozeroy', fillcolor: 'rgba(0, 242, 254, 0.03)'
+        };
+        let traceDns = { 
+            x: [], y: [], name: 'DNS', mode: 'lines', 
+            line: {color: '#b12fc9', shape: 'spline', smoothing: 1.3, width: 3},
+            fill: 'tozeroy', fillcolor: 'rgba(177, 47, 201, 0.03)'
+        };
+
+        let data = [traceArp, traceDhcp, traceDns];
+        
+        let layout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#9ca3af', family: 'Outfit, sans-serif', size: 10 },
+            xaxis: { 
+                title: '', 
+                showgrid: false, 
+                linecolor: 'rgba(255,255,255,0.05)',
+                tickfont: { color: '#4b5563' }
+            },
+            yaxis: { 
+                title: '', 
+                showgrid: true, 
+                gridcolor: 'rgba(255,255,255,0.02)', 
+                linecolor: 'rgba(255,255,255,0.05)',
+                tickfont: { color: '#4b5563' }
+            },
+            margin: { t: 10, r: 10, l: 30, b: 30 },
+            legend: {
+                orientation: 'h',
+                yanchor: 'bottom',
+                y: 1.02,
+                xanchor: 'right',
+                x: 1,
+                font: { color: '#9ca3af', size: 9 }
+            }
+        };
+
+        Plotly.newPlot(chartDiv, data, layout, {responsive: true, displayModeBar: false});
+
+        const maxPoints = 25;
+
+        function updateDashboard() {
+            fetch('/api/stats')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('val-arp').innerText = data.counters.arp_attacks;
+                    document.getElementById('val-dhcp').innerText = data.counters.dhcp_attacks;
+                    document.getElementById('val-dns').innerText = data.counters.dns_attacks;
+                    document.getElementById('val-blocked').innerText = data.blocked_count;
+                    document.getElementById('val-devices').innerText = data.arp_table_size;
+
+                    // Combine port scans and ML anomalies for Card 4
+                    // Disabled: focusing on ARP/DHCP/DNS detection only
+
+                    document.getElementById('val-pkts-dns').innerText  = data.counters.dns_packets;
+                    document.getElementById('val-pkts-arp').innerText  = data.counters.arp_packets;
+                    document.getElementById('val-pkts-icmp').innerText = data.counters.icmp_packets;
+                    document.getElementById('val-pkts-udp').innerText  = data.counters.udp_packets;
+
+                    // Detection counters in Traffic Summary
+                    document.getElementById('val-stat-dhcp').innerText = data.counters.dhcp_attacks;
+                    document.getElementById('val-stat-arp').innerText  = data.counters.arp_attacks;
+                    document.getElementById('val-stat-dns').innerText  = data.counters.dns_attacks;
+
+                    if (data.sensor) {
+                        document.getElementById('sensor-iface').innerText = data.sensor.interface;
+                        document.getElementById('sensor-pkts').innerText = data.counters.packets_processed;
+                        document.getElementById('sensor-env').innerText = data.sensor.environment;
+
+                        const statusEl = document.getElementById('system-status');
+                        if (data.sensor.capture_active) {
+                            statusEl.innerText = 'Capture Active';
+                            statusEl.classList.remove('status-inactive');
+                            statusEl.classList.add('status-active');
+                        } else {
+                            statusEl.innerText = 'Capture Paused';
+                            statusEl.classList.remove('status-active');
+                            statusEl.classList.add('status-inactive');
+                        }
+                    }
+                    if (data.ml_status) {
+                        document.getElementById('sensor-ml').innerText = data.ml_status;
+                        if (data.ml_status.includes("Learning")) {
+                            document.getElementById('sensor-ml').style.color = "#fda085"; 
+                        } else {
+                            document.getElementById('sensor-ml').style.color = "#38f9d7"; 
+                        }
+                    }
+
+                    if (data.recent_dns) {
+                        const dnsList = document.getElementById('dns-list');
+                        dnsList.innerHTML = '';
+                        if (data.recent_dns.length === 0) {
+                            dnsList.innerHTML = '<li class="alert-item"><span class="alert-message">No DNS queries recorded yet</span></li>';
+                        } else {
+                            data.recent_dns.forEach(domain => {
+                                let li = document.createElement('li');
+                                li.className = 'alert-item';
+                                li.innerHTML = `<span class="alert-message">${domain}</span><span class="alert-meta">DNS RESOLVED</span>`;
+                                dnsList.appendChild(li);
+                            });
+                        }
+                    }
+
+                    let time = new Date();
+                    let t_str = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                    Plotly.extendTraces(chartDiv, {
+                        x: [[t_str], [t_str], [t_str]],
+                        y: [[data.counters.arp_attacks], [data.counters.dhcp_attacks], [data.counters.dns_attacks]]
+                    }, [0, 1, 2]);
+
+                    if (chartDiv.data[0].x.length > maxPoints) {
+                        Plotly.relayout(chartDiv, {
+                            xaxis: {
+                                range: [chartDiv.data[0].x.length - maxPoints, chartDiv.data[0].x.length]
+                            }
+                        });
+                    }
+                })
+                .catch(err => console.error("Error fetching stats:", err));
+
+            fetch('/api/history')
+                .then(res => res.json())
+                .then(alerts => {
+                    const tbody = document.getElementById('incident-body');
+                    tbody.innerHTML = '';
+                    
+                    if (alerts.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-dark);padding:2rem;">No incidents recorded yet.</td></tr>';
+                        return;
+                    }
+
+                    alerts.slice(0, 10).forEach(a => {
+                        let sevClass = a.risk >= 8 ? 'sev-critical' : a.risk >= 5 ? 'sev-warning' : 'sev-info';
+                        let sevLabel = a.risk >= 8 ? 'HIGH' : a.risk >= 5 ? 'MEDIUM' : 'LOW';
+                        
+                        // Calculate duration
+                        let duration = 'N/A';
+                        if (a.first_seen_ts && a.last_seen_ts) {
+                            let diff = Math.floor(a.last_seen_ts - a.first_seen_ts);
+                            if (diff < 60) duration = diff + 's';
+                            else if (diff < 3600) duration = Math.floor(diff/60) + 'm';
+                            else duration = Math.floor(diff/3600) + 'h';
+                        }
+                        
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${a.time}</td>
+                            <td><span class="sev-badge ${sevClass}">${sevLabel}</span></td>
+                            <td><strong>${a.type}</strong></td>
+                            <td>${a.pkt_count || 1}</td>
+                            <td>${a.attacker_ip || 'N/A'}</td>
+                            <td>${a.attacker_mac || 'N/A'}</td>
+                            <td>${a.victim_ip || 'N/A'}</td>
+                            <td>${a.victim_mac || 'N/A'}</td>
+                            <td>${a.first_seen || 'N/A'}</td>
+                            <td>${a.last_seen || 'N/A'}</td>
+                            <td>${duration}</td>
+                            <td class="details-cell">${a.message}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => console.error("Error fetching history:", err));
+        }
+
+        setInterval(updateDashboard, 2000);
+        updateDashboard();
+    </script>
+</body>
+</html>

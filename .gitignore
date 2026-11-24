@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+*.db
+*.pcap
+venv/
+.venv/
+.env

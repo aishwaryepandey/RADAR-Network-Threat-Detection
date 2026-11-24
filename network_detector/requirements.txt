@@ -1,0 +1,6 @@
+scapy
+Flask
+scikit-learn
+pandas
+plotly
+psutil
